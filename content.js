@@ -49,8 +49,11 @@ async function initializePlugin() {
     // Wait for full page load
     await waitForFullPageLoad();
 
-    // Run the styling and AI assistance
+    // Style Moodle quiz form
     styleMoodleQuizForm();
+
+    // Set up message listener
+    setupMessageListener();
 
     // Optional: Add mutation observer for dynamically loaded content
     const observer = new MutationObserver((mutations) => {
@@ -112,67 +115,140 @@ function autoSelectAnswer(container, aiResponse) {
   // Normalize AI response
   const normalizedResponse = aiResponse.toLowerCase().trim();
   
+  console.log('Auto-select Debug:');
+  console.log('AI Response:', normalizedResponse);
+  
   // Find radio/checkbox options
   const options = container.querySelectorAll('input[type="radio"], input[type="checkbox"]');
   const labels = container.querySelectorAll('label');
   
+  console.log('Options found:', options.length);
+  console.log('Labels found:', labels.length);
+  
   // Map to store option texts with their corresponding inputs
-  const optionMap = Array.from(labels).map((label, index) => ({
-    text: label.innerText.toLowerCase().trim(),
-    input: options[index],
-    letter: String.fromCharCode(97 + index) // a, b, c, d...
-  }));
+  const optionMap = Array.from(labels).map((label, index) => {
+    const labelText = label.innerText.toLowerCase().trim();
+    console.log(`Option ${index}:`, {
+      text: labelText,
+      letter: String.fromCharCode(97 + index)
+    });
+    
+    return {
+      text: labelText,
+      input: options[index],
+      letter: String.fromCharCode(97 + index) // a, b, c, d...
+    };
+  });
   
   // Determine input type (radio or checkbox)
   const isCheckbox = options[0].type === 'checkbox';
+  console.log('Is Checkbox:', isCheckbox);
   
-  // Precise matching logic for multiple selections
-  const selectedOptions = [];
-  
-  // Check for full letter responses (e.g., 'ab', 'abcd', 'bd')
-  const letterMatches = normalizedResponse.match(/[abcd]+/);
-  
-  if (letterMatches) {
-    const matchedLetters = letterMatches[0].split('');
+  // Matching strategies
+  const matchingStrategies = [
+    // 1. Exact letter match with multiple strategies
+    () => {
+      const chineseLetters = ['A', 'B', 'C', 'D'];
+      const chineseOptions = ['甲', '乙', '丙', '丁'];
+      const aiResponseLower = aiResponse.toLowerCase().trim();
+      
+      // Strategy 1: Exact single letter match
+      const singleLetterMatch = chineseLetters.find(letter => 
+        aiResponseLower === letter.toLowerCase()
+      );
+      
+      if (singleLetterMatch) {
+        const index = chineseLetters.indexOf(singleLetterMatch);
+        return [optionMap[index]].filter(Boolean);
+      }
+      
+      // Strategy 2: Chinese character match
+      const chineseMatch = chineseOptions.find(char => 
+        aiResponseLower.includes(char.toLowerCase())
+      );
+      
+      if (chineseMatch) {
+        const index = chineseOptions.indexOf(chineseMatch);
+        return [optionMap[index]].filter(Boolean);
+      }
+      
+      // Strategy 3: Partial match with letters or Chinese characters
+      const partialMatches = optionMap.filter(opt => 
+        aiResponseLower.includes(opt.letter) || 
+        chineseOptions.some(char => aiResponseLower.includes(char))
+      );
+      
+      return partialMatches;
+    },
     
-    matchedLetters.forEach(letter => {
-      const matchedOption = optionMap.find(opt => opt.letter === letter);
-      if (matchedOption) {
-        selectedOptions.push(matchedOption);
+    // 2. Text-based matching with multiple approaches
+    () => {
+      const aiResponseLower = aiResponse.toLowerCase().trim();
+      
+      return optionMap.filter(opt => {
+        const optTextLower = opt.text.toLowerCase();
+        
+        // Check for exact text match
+        if (aiResponseLower === optTextLower) return true;
+        
+        // Check for partial text match
+        if (optTextLower.includes(aiResponseLower) || 
+            aiResponseLower.includes(optTextLower)) return true;
+        
+        return false;
+      });
+    },
+    
+    // 3. True/False specific handling
+    () => {
+      const normalizedContent = aiResponse.toLowerCase().trim();
+      
+      if (normalizedContent.includes('true') || normalizedContent.includes('对')) {
+        return optionMap.filter(opt => 
+          opt.text.toLowerCase().includes('true') || 
+          opt.text.toLowerCase().includes('对')
+        );
       }
-    });
-  }
-  
-  // Fallback for text-based responses
-  if (selectedOptions.length === 0) {
-    optionMap.forEach(opt => {
-      if (normalizedResponse.includes(opt.text) || 
-          normalizedResponse.includes(opt.letter)) {
-        selectedOptions.push(opt);
+      
+      if (normalizedContent.includes('false') || normalizedContent.includes('错')) {
+        return optionMap.filter(opt => 
+          opt.text.toLowerCase().includes('false') || 
+          opt.text.toLowerCase().includes('错')
+        );
       }
-    });
-  }
-  
-  // True/False specific handling
-  if (selectedOptions.length === 0) {
-    if (normalizedResponse.includes('true') || normalizedResponse.includes('对')) {
-      const trueOption = optionMap.find(opt => 
-        opt.text.includes('对') || opt.text.includes('true')
-      );
-      if (trueOption) selectedOptions.push(trueOption);
-    } else if (normalizedResponse.includes('false') || normalizedResponse.includes('错')) {
-      const falseOption = optionMap.find(opt => 
-        opt.text.includes('错') || opt.text.includes('false')
-      );
-      if (falseOption) selectedOptions.push(falseOption);
+      
+      return [];
     }
-  }
+  ];
+  
+  // Collect all matching options with enhanced matching
+  const selectedOptions = matchingStrategies.reduce((acc, strategy) => {
+    const matchedOptions = strategy();
+    if (matchedOptions.length > 0) {
+      return [...acc, ...matchedOptions];
+    }
+    return acc;
+  }, []);
+  
+  // Remove duplicates and log detailed matching information
+  const uniqueSelectedOptions = [...new Set(selectedOptions)];
+  
+  console.log('Matching Debug:', {
+    aiResponse: aiResponse,
+    matchedOptionsCount: uniqueSelectedOptions.length,
+    matchedOptions: uniqueSelectedOptions.map(opt => ({
+      text: opt.text,
+      letter: opt.letter
+    }))
+  });
   
   // Select the matching options
   let selectionMade = false;
-  selectedOptions.forEach(opt => {
+  uniqueSelectedOptions.forEach(opt => {
     // Ensure the input is visible and not disabled
     if (!opt.input.disabled && opt.input.offsetParent !== null) {
+      console.log('Selecting option:', opt.text);
+      
       // For radio, only select the first matching option
       if (!isCheckbox) {
         opt.input.click();
@@ -186,6 +262,7 @@ function autoSelectAnswer(container, aiResponse) {
     }
   });
   
+  console.log('Selection Made:', selectionMade);
   return selectionMade;
 }
 
@@ -391,13 +468,14 @@ function styleMoodleQuizForm() {
       
       // Create output textarea for AI response
       const outputTextarea = document.createElement('textarea');
+      outputTextarea.placeholder = 'AI Response';
+      outputTextarea.rows = 4;
       outputTextarea.style.width = '100%';
-      outputTextarea.style.minHeight = '50px';
       outputTextarea.style.marginBottom = '10px';
-      outputTextarea.style.color = 'orange !important';
-      outputTextarea.style.borderColor = 'orange !important';
-      outputTextarea.placeholder = 'AI Answer will appear here';
-      outputTextarea.readOnly = true;
+      outputTextarea.style.padding = '5px';
+      outputTextarea.style.borderRadius = '4px';
+      outputTextarea.style.border = '1px solid #ccc';
+      outputTextarea.setAttribute('data-ai-response', 'true');
       
       // Create AI ask button
       const askButton = document.createElement('button');
@@ -432,19 +510,160 @@ function styleMoodleQuizForm() {
       buttonContainer.appendChild(autoSelectButton);
       
       // Auto-select button event listener
-      autoSelectButton.addEventListener('click', () => {
-        // Get the current output textarea content
-        const textareaContent = outputTextarea.value;
+      autoSelectButton.addEventListener('click', (event) => {
+        // Prevent page refresh
+        event.preventDefault();
+        event.stopPropagation();
+        
+        console.log('Auto Select Button Clicked');
+        
+        // Get the answer from the second textarea (AI response)
+        const aiResponseTextarea = question.querySelector('textarea[data-ai-response="true"]');
+        const aiResponse = aiResponseTextarea ? aiResponseTextarea.value.trim() : '';
+        
+        console.log('AI Response:', aiResponse);
         
         // Try to auto-select answer
         const answerContainer = question.querySelector('.answer');
-        if (answerContainer) {
-          const autoSelected = autoSelectAnswer(answerContainer, textareaContent);
-          if (autoSelected) {
-            outputTextarea.value += '\n\n✓ Answer auto-selected from AI response';
+        console.log('Answer Container:', answerContainer);
+        
+        if (answerContainer && aiResponse) {
+          // Find all input options
+          const options = answerContainer.querySelectorAll('input[type="radio"], input[type="checkbox"]');
+          const labels = answerContainer.querySelectorAll('label');
+          
+          console.log('Options found:', options.length);
+          console.log('Labels found:', labels.length);
+          
+          // Create option map
+          const optionMap = Array.from(labels).map((label, index) => {
+            const labelText = label.innerText.toLowerCase().trim();
+            return {
+              text: labelText,
+              input: options[index],
+              letter: String.fromCharCode(97 + index)
+            };
+          });
+          
+          // Matching strategies
+          const matchingStrategies = [
+            // 1. Exact letter match with multiple strategies
+            () => {
+              const chineseLetters = ['A', 'B', 'C', 'D'];
+              const chineseOptions = ['甲', '乙', '丙', '丁'];
+              const aiResponseLower = aiResponse.toLowerCase().trim();
+              
+              // Strategy 1: Exact single letter match
+              const singleLetterMatch = chineseLetters.find(letter => 
+                aiResponseLower === letter.toLowerCase()
+              );
+              
+              if (singleLetterMatch) {
+                const index = chineseLetters.indexOf(singleLetterMatch);
+                return [optionMap[index]].filter(Boolean);
+              }
+              
+              // Strategy 2: Chinese character match
+              const chineseMatch = chineseOptions.find(char => 
+                aiResponseLower.includes(char.toLowerCase())
+              );
+              
+              if (chineseMatch) {
+                const index = chineseOptions.indexOf(chineseMatch);
+                return [optionMap[index]].filter(Boolean);
+              }
+              
+              // Strategy 3: Partial match with letters or Chinese characters
+              const partialMatches = optionMap.filter(opt => 
+                aiResponseLower.includes(opt.letter) || 
+                chineseOptions.some(char => aiResponseLower.includes(char))
+              );
+              
+              return partialMatches;
+            },
+            
+            // 2. Text-based matching with multiple approaches
+            () => {
+              const aiResponseLower = aiResponse.toLowerCase().trim();
+              
+              return optionMap.filter(opt => {
+                const optTextLower = opt.text.toLowerCase();
+                
+                // Check for exact text match
+                if (aiResponseLower === optTextLower) return true;
+                
+                // Check for partial text match
+                if (optTextLower.includes(aiResponseLower) || 
+                    aiResponseLower.includes(optTextLower)) return true;
+                
+                return false;
+              });
+            },
+            
+            // 3. True/False specific handling
+            () => {
+              const normalizedContent = aiResponse.toLowerCase().trim();
+              
+              if (normalizedContent.includes('true') || normalizedContent.includes('对')) {
+                return optionMap.filter(opt => 
+                  opt.text.toLowerCase().includes('true') || 
+                  opt.text.toLowerCase().includes('对')
+                );
+              }
+              
+              if (normalizedContent.includes('false') || normalizedContent.includes('错')) {
+                return optionMap.filter(opt => 
+                  opt.text.toLowerCase().includes('false') || 
+                  opt.text.toLowerCase().includes('错')
+                );
+              }
+              
+              return [];
+            }
+          ];
+          
+          // Collect all matching options with enhanced matching
+          const selectedOptions = matchingStrategies.reduce((acc, strategy) => {
+            const matchedOptions = strategy();
+            if (matchedOptions.length > 0) {
+              return [...acc, ...matchedOptions];
+            }
+            return acc;
+          }, []);
+          
+          // Remove duplicates and log detailed matching information
+          const uniqueSelectedOptions = [...new Set(selectedOptions)];
+          
+          console.log('Matching Debug:', {
+            aiResponse: aiResponse,
+            matchedOptionsCount: uniqueSelectedOptions.length,
+            matchedOptions: uniqueSelectedOptions.map(opt => ({
+              text: opt.text,
+              letter: opt.letter
+            }))
+          });
+          
+          // Select options
+          let selectionMade = false;
+          uniqueSelectedOptions.forEach(opt => {
+            if (!opt.input.disabled && opt.input.offsetParent !== null) {
+              console.log('Selecting option:', opt.text);
+              opt.input.click();
+              selectionMade = true;
+            }
+          });
+          
+          // Update output textarea
+          if (selectionMade) {
+            outputTextarea.value += `\n\n✓ Auto-selected answer: ${uniqueSelectedOptions.map(opt => opt.text).join(', ')}`;
           } else {
             outputTextarea.value += '\n\n✗ Could not auto-select answer';
           }
+          
+          console.log('Selection Made:', selectionMade);
+        } else {
+          console.log('No AI response or answer container found');
+          outputTextarea.value += '\n\n✗ No AI response or answer container';
         }
       });
       
@@ -564,6 +783,28 @@ function styleMoodleQuizForm() {
     });
   } catch (error) {
     console.error('Error in styleMoodleQuizForm:', error);
+  }
+}
+
+// Function to set up message listener
+function setupMessageListener() {
+  console.log('设置消息监听器');
+  
+  // Check if chrome.runtime is available
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+      console.log('Received message:', request);
+      
+      // Handle different types of messages
+      if (request.action === 'autoComplete') {
+        autoCompleteAllQuestions();
+      }
+      
+      // Always send a response to avoid errors
+      sendResponse({ status: 'received' });
+    });
+  } else {
+    console.error('Chrome runtime messaging not available');
   }
 }
 

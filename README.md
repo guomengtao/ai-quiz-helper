@@ -1,18 +1,17 @@
 # 🧠 AI Quiz Helper Chrome Extension
 
-## 🚀 Version 1.4.0 - Bulk AI Quiz Assistance
+## 🚀 Version 1.5.0 
 
 ### 🌟 New Features
-- **Global Auto-Complete Mechanism**
-  - One-click processing of all quiz questions
-  - Intelligent sequential AI assistance
-  - Customized delay between questions
+- Enhanced answer selection mechanism
+- Improved matching logic for single and multiple letter answers
+- Support for both English and Chinese letter inputs
+- More robust text-based matching strategies
 
 ### ✨ Key Improvements
-- Added "Auto Complete All Questions" button
-- Intelligent question processing
-- Random delay between question solutions
-- Enhanced user experience
+- Advanced matching algorithm for quiz options
+- Detailed debugging and logging
+- Improved cross-language support
 
 ### 🔧 Technical Enhancements
 - Sequential AI ask button processing
@@ -33,6 +32,11 @@
 4. Load Unpacked Extension
 5. Select the project directory
 
+### 🛠 Installation
+1. Clone the repository
+2. Load as an unpacked extension in Chrome
+3. Navigate to a supported quiz platform
+
 ### 🔐 API Configuration
 - Uses Coze AI for intelligent quiz assistance
 - Secure API key management
@@ -50,8 +54,14 @@
 4. Push to the branch
 5. Create a Pull Request
 
+### 🤝 Contributing
+Please read CONTRIBUTING.md for details on our code of conduct and the process for submitting pull requests.
+
 ### 📝 License
 MIT License
+
+### 📝 License
+This project is licensed under the MIT License - see the LICENSE.md file for details.
 
 ### 🌐 Contact
 [Your Contact Information]
