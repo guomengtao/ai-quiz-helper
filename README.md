@@ -1,29 +1,30 @@
 # 🧠 AI Quiz Helper Chrome Extension
 
-## 🚀 Version 1.3.0 - Enhanced AI Quiz Assistance
+## 🚀 Version 1.4.0 - Bulk AI Quiz Assistance
 
 ### 🌟 New Features
-- **Advanced Auto-Select Mechanism**
-  - Intelligent answer selection based on AI response
-  - Support for multiple question types (Multiple Choice, True/False)
-  - Detailed HTML context extraction
+- **Global Auto-Complete Mechanism**
+  - One-click processing of all quiz questions
+  - Intelligent sequential AI assistance
+  - Customized delay between questions
 
 ### ✨ Key Improvements
-- Improved question detection logic
-- Enhanced AI response parsing
-- More robust option selection
-- Comprehensive HTML structure analysis
+- Added "Auto Complete All Questions" button
+- Intelligent question processing
+- Random delay between question solutions
+- Enhanced user experience
 
 ### 🔧 Technical Enhancements
-- Refined AI instruction text
-- Flexible answer selection algorithm
-- Improved cross-browser compatibility
-- Detailed feedback mechanism
+- Sequential AI ask button processing
+- Countdown and progress tracking
+- Flexible delay mechanism (3-6 seconds)
+- Improved cross-question compatibility
 
 ### 🎯 Supported Platforms
 - Moodle Quiz Pages
 - True/False Questions
 - Multiple Choice Questions
+- Bulk Question Processing
 
 ### 🛠 Installation
 1. Clone the repository
@@ -35,6 +36,7 @@
 ### 🔐 API Configuration
 - Uses Coze AI for intelligent quiz assistance
 - Secure API key management
+- Supports bulk processing
 
 ### 📦 Dependencies
 - Chrome Browser

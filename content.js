@@ -116,50 +116,147 @@ function autoSelectAnswer(container, aiResponse) {
   const options = container.querySelectorAll('input[type="radio"], input[type="checkbox"]');
   const labels = container.querySelectorAll('label');
   
-  // Map to store option texts
-  const optionTexts = Array.from(labels).map(label => label.innerText.toLowerCase().trim());
+  // Map to store option texts with their corresponding inputs
+  const optionMap = Array.from(labels).map((label, index) => ({
+    text: label.innerText.toLowerCase().trim(),
+    input: options[index],
+    letter: String.fromCharCode(97 + index) // a, b, c, d...
+  }));
   
-  // Precise matching logic
-  let matchIndex = -1;
-  const letterResponses = ['a', 'b', 'c', 'd'];
+  // Determine input type (radio or checkbox)
+  const isCheckbox = options[0].type === 'checkbox';
   
-  // Check for exact letter match
-  for (let letter of letterResponses) {
-    if (normalizedResponse === letter) {
-      matchIndex = optionTexts.findIndex(text => text.startsWith(`${letter}.`));
-      break;
-    }
-  }
+  // Precise matching logic for multiple selections
+  const selectedOptions = [];
   
-  // Fallback: check for partial matches
-  if (matchIndex === -1) {
-    letterResponses.forEach((letter, index) => {
-      if (normalizedResponse.includes(letter)) {
-        matchIndex = index;
-        return;
+  // Check for full letter responses (e.g., 'ab', 'abcd', 'bd')
+  const letterMatches = normalizedResponse.match(/[abcd]+/);
+  
+  if (letterMatches) {
+    const matchedLetters = letterMatches[0].split('');
+    
+    matchedLetters.forEach(letter => {
+      const matchedOption = optionMap.find(opt => opt.letter === letter);
+      if (matchedOption) {
+        selectedOptions.push(matchedOption);
       }
     });
   }
   
-  // Additional fallback for true/false questions
-  if (matchIndex === -1) {
+  // Fallback for text-based responses
+  if (selectedOptions.length === 0) {
+    optionMap.forEach(opt => {
+      if (normalizedResponse.includes(opt.text) || 
+          normalizedResponse.includes(opt.letter)) {
+        selectedOptions.push(opt);
+      }
+    });
+  }
+  
+  // True/False specific handling
+  if (selectedOptions.length === 0) {
     if (normalizedResponse.includes('true') || normalizedResponse.includes('对')) {
-      matchIndex = optionTexts.findIndex(text => text.includes('对') || text.includes('true'));
+      const trueOption = optionMap.find(opt => 
+        opt.text.includes('对') || opt.text.includes('true')
+      );
+      if (trueOption) selectedOptions.push(trueOption);
     } else if (normalizedResponse.includes('false') || normalizedResponse.includes('错')) {
-      matchIndex = optionTexts.findIndex(text => text.includes('错') || text.includes('false'));
+      const falseOption = optionMap.find(opt => 
+        opt.text.includes('错') || opt.text.includes('false')
+      );
+      if (falseOption) selectedOptions.push(falseOption);
     }
   }
   
-  // Select the matching option if found
-  if (matchIndex !== -1 && options[matchIndex]) {
+  // Select the matching options
+  let selectionMade = false;
+  selectedOptions.forEach(opt => {
     // Ensure the input is visible and not disabled
-    if (!options[matchIndex].disabled && options[matchIndex].offsetParent !== null) {
-      options[matchIndex].click();
-      return true;
+    if (!opt.input.disabled && opt.input.offsetParent !== null) {
+      // For radio, only select the first matching option
+      if (!isCheckbox) {
+        opt.input.click();
+        selectionMade = true;
+        return;
+      }
+      
+      // For checkbox, click all matching options
+      opt.input.click();
+      selectionMade = true;
     }
+  });
+  
+  return selectionMade;
+}
+
+// Function to create a delay with random duration between 3-6 seconds
+function randomDelay() {
+  return new Promise(resolve => {
+    const delay = Math.floor(Math.random() * (6000 - 3000 + 1)) + 3000;
+    setTimeout(resolve, delay);
+  });
+}
+
+// Function to sequentially process all AI ask buttons
+async function autoCompleteAllQuestions() {
+  // Find all AI ask buttons
+  const askButtons = document.querySelectorAll('.ai-assist-container .ask-ai-button');
+  
+  // Disable the global auto-complete button during processing
+  const globalAutoCompleteButton = document.getElementById('global-auto-complete-btn');
+  if (globalAutoCompleteButton) {
+    globalAutoCompleteButton.disabled = true;
+    globalAutoCompleteButton.style.opacity = '0.5';
   }
   
-  return false;
+  // Create a countdown display
+  const countdownDisplay = document.createElement('div');
+  countdownDisplay.id = 'auto-complete-countdown';
+  countdownDisplay.style.position = 'fixed';
+  countdownDisplay.style.top = '20px';
+  countdownDisplay.style.right = '20px';
+  countdownDisplay.style.backgroundColor = 'orange';
+  countdownDisplay.style.color = 'white';
+  countdownDisplay.style.padding = '10px';
+  countdownDisplay.style.borderRadius = '10px';
+  countdownDisplay.style.zIndex = '9999';
+  document.body.appendChild(countdownDisplay);
+  
+  try {
+    for (let i = 0; i < askButtons.length; i++) {
+      // Update countdown display
+      countdownDisplay.innerText = `Processing Question ${i + 1}/${askButtons.length}`;
+      
+      // Trigger AI ask button click
+      askButtons[i].click();
+      
+      // Wait for random delay
+      for (let countdown = 5; countdown > 0; countdown--) {
+        countdownDisplay.innerText = `Next in ${countdown} seconds (Question ${i + 1}/${askButtons.length})`;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Additional random delay between 3-6 seconds
+      await randomDelay();
+    }
+    
+    // Final message
+    countdownDisplay.innerText = 'All questions processed!';
+    countdownDisplay.style.backgroundColor = 'green';
+  } catch (error) {
+    console.error('Auto-complete error:', error);
+    countdownDisplay.innerText = 'Error during auto-complete';
+    countdownDisplay.style.backgroundColor = 'red';
+  } finally {
+    // Re-enable the global auto-complete button
+    if (globalAutoCompleteButton) {
+      setTimeout(() => {
+        globalAutoCompleteButton.disabled = false;
+        globalAutoCompleteButton.style.opacity = '1';
+        document.body.removeChild(countdownDisplay);
+      }, 3000);
+    }
+  }
 }
 
 // Function to style Moodle quiz form elements and add AI assistance
@@ -168,16 +265,59 @@ function styleMoodleQuizForm() {
     // Predefined AI instruction text
     const aiInstructionText = "Please answer only using A, B, C, or D. If the answer is correct, show A. If the answer is incorrect, show B. Do not include any additional information.";
 
+    // Create global auto-complete button
+    const globalAutoCompleteButton = document.createElement('button');
+    globalAutoCompleteButton.id = 'global-auto-complete-btn';
+    globalAutoCompleteButton.innerText = 'Auto Complete All Questions';
+    globalAutoCompleteButton.style.position = 'fixed';
+    globalAutoCompleteButton.style.top = '20px';
+    globalAutoCompleteButton.style.left = '20px';
+    globalAutoCompleteButton.style.backgroundColor = 'purple';
+    globalAutoCompleteButton.style.color = 'white';
+    globalAutoCompleteButton.style.padding = '10px 20px';
+    globalAutoCompleteButton.style.borderRadius = '10px';
+    globalAutoCompleteButton.style.zIndex = '9999';
+    globalAutoCompleteButton.style.border = 'none';
+    globalAutoCompleteButton.style.cursor = 'pointer';
+    
+    // Add event listener to global auto-complete button
+    globalAutoCompleteButton.addEventListener('click', autoCompleteAllQuestions);
+    
+    // Add button to body
+    document.body.appendChild(globalAutoCompleteButton);
+
     // Select all questions
     const questions = document.querySelectorAll('.que');
     
     questions.forEach((question, index) => {
+      // Skip section titles or non-question elements
+      const questionTextEl = question.querySelector('.qtext');
+      
+      // Check for section titles or non-question elements
+      if (!questionTextEl) return;
+      
+      // Additional check for section titles
+      const titleKeywords = [
+        '判断题', 
+        '选择题', 
+        '单项选择题', 
+        '一、', 
+        '、单项选择题', 
+        '第一部分', 
+        '第二部分',
+        '每题',
+        '共'
+      ];
+      const questionText = questionTextEl.innerText.trim();
+      
+      // Skip if the text matches section title keywords
+      if (titleKeywords.some(keyword => questionText.includes(keyword))) return;
+      
       // Performance: check if already processed
       if (question.querySelector('.ai-assist-container')) return;
 
-      // Extract question text
-      const questionTextEl = question.querySelector('.qtext');
-      let questionText = '';
+      // Extract full question text
+      let fullQuestionText = '';
       
       if (questionTextEl) {
         // Handle multi-line questions
@@ -190,13 +330,13 @@ function styleMoodleQuizForm() {
           paragraphTexts[paragraphTexts.length - 1] += ']';
           
           // Join paragraphs for full question text
-          questionText = paragraphTexts.join('\n');
+          fullQuestionText = paragraphTexts.join('\n');
         } else {
           // Fallback if no paragraphs
-          questionText = `[${questionTextEl.innerText}]`;
+          fullQuestionText = `[${questionTextEl.innerText}]`;
         }
       } else {
-        questionText = `[Question ${index + 1}]`;
+        fullQuestionText = `[Question ${index + 1}]`;
       }
       
       // Extract full option text with letter and content
@@ -229,7 +369,7 @@ function styleMoodleQuizForm() {
       
       // Modify question text for true/false questions
       if (isTrueFalseQuestion) {
-        questionText = `[For true/false questions: ${questionText.replace(/^\[|\]$/g, '')}]`;
+        fullQuestionText = `[For true/false questions: ${fullQuestionText.replace(/^\[|\]$/g, '')}]`;
       }
       
       // Create container for AI assistance
@@ -242,7 +382,7 @@ function styleMoodleQuizForm() {
       
       // Create input textarea
       const inputTextarea = document.createElement('textarea');
-      inputTextarea.value = `${questionText}\n\nOptions:\n${options.join('\n')}\n\nAnswer Container HTML:\n${answerContainerHTML}\n\n${aiInstructionText}`;
+      inputTextarea.value = `${fullQuestionText}\n\nOptions:\n${options.join('\n')}\n\nAnswer Container HTML:\n${answerContainerHTML}\n\n${aiInstructionText}`;
       inputTextarea.style.width = '100%';
       inputTextarea.style.minHeight = '150px';
       inputTextarea.style.marginBottom = '10px';
@@ -261,6 +401,7 @@ function styleMoodleQuizForm() {
       
       // Create AI ask button
       const askButton = document.createElement('button');
+      askButton.classList.add('ask-ai-button');
       askButton.innerText = 'Ask AI';
       askButton.style.backgroundColor = 'orange';
       askButton.style.color = 'white';
@@ -324,16 +465,24 @@ function styleMoodleQuizForm() {
           
           // Try to auto-select answer
           const answerContainer = question.querySelector('.answer');
+          console.log('Answer Container:', answerContainer);
+          console.log('AI Response:', aiResponse);
+          
           if (answerContainer) {
             const autoSelected = autoSelectAnswer(answerContainer, aiResponse);
+            console.log('Auto-selected:', autoSelected);
+            
             if (autoSelected) {
               outputTextarea.value += '\n\n✓ Answer auto-selected';
             } else {
               outputTextarea.value += '\n\n✗ No matching option found';
             }
+          } else {
+            console.error('No answer container found for this question');
           }
         } catch (error) {
           outputTextarea.value = `Error: ${error.message}`;
+          console.error('Auto-select error:', error);
         } finally {
           // Re-enable buttons
           askButton.disabled = false;
