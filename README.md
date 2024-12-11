@@ -1,58 +1,58 @@
-# AI Quiz Helper Chrome Extension
+# 🧠 AI Quiz Helper Chrome Extension
 
-## Overview
-A Chrome extension that enhances online quiz experiences by:
-- Styling web forms with color-coded questions and choices
-- Providing AI-powered answer assistance
-- Automatically selecting answers based on AI recommendations
+## 🚀 Version 1.3.0 - Enhanced AI Quiz Assistance
 
-## Features
-- 🎨 Form Styling
-  - Blue question titles
-  - Green choice options
-  - Circular design for better readability
+### 🌟 New Features
+- **Advanced Auto-Select Mechanism**
+  - Intelligent answer selection based on AI response
+  - Support for multiple question types (Multiple Choice, True/False)
+  - Detailed HTML context extraction
 
-- 🤖 AI Assistance
-  - Integrated Coze AI API
-  - One-click AI answer generation
-  - Automatic answer selection
+### ✨ Key Improvements
+- Improved question detection logic
+- Enhanced AI response parsing
+- More robust option selection
+- Comprehensive HTML structure analysis
 
-## Installation
+### 🔧 Technical Enhancements
+- Refined AI instruction text
+- Flexible answer selection algorithm
+- Improved cross-browser compatibility
+- Detailed feedback mechanism
 
-### Chrome Web Store
-(Coming Soon)
-
-### Manual Installation
-1. Clone the repository
-2. Open Chrome and go to `chrome://extensions/`
-3. Enable "Developer mode"
-4. Click "Load unpacked"
-5. Select the extension directory
-
-## Usage
-1. Open a supported quiz page
-2. Each question will have an AI assistance section
-3. Click "Ask AI" to get answer suggestions
-4. AI will attempt to auto-select the correct answer
-
-## Configuration
-To use the AI feature, you'll need:
-- Coze AI API Key
-- Coze Bot ID
-
-## Privacy & Security
-- No user data is stored
-- AI requests are made directly to Coze API
-
-## Supported Platforms
+### 🎯 Supported Platforms
 - Moodle Quiz Pages
-- More platforms coming soon!
+- True/False Questions
+- Multiple Choice Questions
 
-## Contributing
-Contributions are welcome! Please read our contributing guidelines.
+### 🛠 Installation
+1. Clone the repository
+2. Open Chrome Extensions
+3. Enable Developer Mode
+4. Load Unpacked Extension
+5. Select the project directory
 
-## License
+### 🔐 API Configuration
+- Uses Coze AI for intelligent quiz assistance
+- Secure API key management
+
+### 📦 Dependencies
+- Chrome Browser
+- Manifest V3 Compatibility
+- Modern JavaScript
+
+### 🤝 Contributing
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+### 📝 License
 MIT License
 
-## Disclaimer
-This tool is for educational purposes. Always verify AI-suggested answers.
+### 🌐 Contact
+[Your Contact Information]
+
+### 🚨 Disclaimer
+For educational purposes only. Always follow your institution's academic integrity policies.
