@@ -1,0 +1,13 @@
+/* Additional CSS for form styling */
+label {
+  color: blue !important;
+  border-radius: 20px !important;
+  border: 2px solid blue !important;
+  padding: 10px !important;
+  display: block !important;
+  margin-bottom: 10px !important;
+}
+
+input, select, textarea {
+  color: green !important;
+}
